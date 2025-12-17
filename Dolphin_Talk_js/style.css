@@ -1,0 +1,16 @@
+#dolphin-talk {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  z-index: 999999;
+}
+
+#dolphin-bubble {
+  max-width: 240px;
+  background: white;
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  margin-top: 6px;
+  font-size: 14px;
+}

@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Dolphin Talk",
+  "version": "0.1",
+  "description": "ｷｭｲｰ",
+  "permissions": ["storage"],
+  "host_permissions":["https://generativelanguage.googleapis.com/"],
+  "background":{
+	  "service_worker":"background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["style.css"]
+    }
+  ],
+  "options_page":"options.html"
+}
