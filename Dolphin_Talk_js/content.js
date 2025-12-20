@@ -1,44 +1,166 @@
 (function () {
+	// 既にイルカが存在する場合は何もしない
 	if (document.getElementById("dolphin-talk")) return;
+
+	// イルカの状態管理
+	let dolphinState = {
+		isVisible: false,
+		nextAppearTime: null,
+		conversationHistory: []
+	};
+
+	// ストレージから前回の状態を読み込む
+	chrome.storage.local.get(['dolphinNextAppear'], (data) => {
+		if (data.dolphinNextAppear) {
+			dolphinState.nextAppearTime = new Date(data.dolphinNextAppear);
+		} else {
+			// 初回起動時は2〜5分後に設定
+			scheduleNextAppearance();
+		}
+		checkAndShowDolphin();
+	});
 
 	const wrap = document.createElement("div");
 	wrap.id = "dolphin-talk";
+	wrap.style.display = "none"; // 初期状態は非表示
 
-	// Base64データURL（省略せず全部貼る）
-	const dolphinBase64 =
-		"data:image/webp;base64,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";
+	// dolphin.pngのURLを取得
+	const dolphinImageUrl = chrome.runtime.getURL("dolphin.png");
 
 	wrap.innerHTML = `
-	<img id="dolphin-sprite" src="${dolphinBase64}" style="width:150px;cursor:pointer;">
-	<div id="dolphin-bubble">何について調べますか？</div>
+		<div id="dolphin-close-btn">×</div>
+		<img id="dolphin-sprite" src="${dolphinImageUrl}" style="width:150px;cursor:pointer;">
+		<div id="dolphin-bubble"></div>
+		<div id="dolphin-input-area" style="display:none;">
+			<input type="text" id="dolphin-user-input" placeholder="返事を入力...">
+			<button id="dolphin-send-btn">送信</button>
+		</div>
 	`;
 
 	document.body.appendChild(wrap);
 
 	const sprite = document.getElementById("dolphin-sprite");
 	const bubble = document.getElementById("dolphin-bubble");
+	const closeBtn = document.getElementById("dolphin-close-btn");
+	const inputArea = document.getElementById("dolphin-input-area");
+	const userInput = document.getElementById("dolphin-user-input");
+	const sendBtn = document.getElementById("dolphin-send-btn");
 
+	// イルカ画像エラー処理
 	sprite.onerror = () => {
 		bubble.textContent = "イルカが迷子になってるよ…🐬💦";
 	};
 
-sprite.addEventListener("click", async () => {
-	const q = prompt("聞きたいことはありますか？");
-	if (!q) return;
+	// 次回出現時刻をスケジュール (2〜5分後のランダム)
+	function scheduleNextAppearance() {
+		const minMinutes = 2;
+		const maxMinutes = 5;
+		const randomMinutes = Math.random() * (maxMinutes - minMinutes) + minMinutes;
+		const nextTime = new Date(Date.now() + randomMinutes * 60 * 1000);
 
-	bubble.textContent = "考え中...ｷｭｲｰ";
+		dolphinState.nextAppearTime = nextTime;
+		chrome.storage.local.set({
+			dolphinNextAppear: nextTime.toISOString()
+		});
 
-	chrome.runtime.sendMessage({ action:"askGemini",question:q},(response) => {
-		if(chrome.runtime.lastError){
-			bubble.textContent = "設定を確認してね！エラー：" + chrome.runtime.lastError.message;
-			return;
+		console.log(`🐬 次のイルカ出現予定: ${nextTime.toLocaleString()}`);
+	}
+
+	// イルカを表示する
+	function showDolphin() {
+		if (dolphinState.isVisible) return;
+
+		dolphinState.isVisible = true;
+		wrap.style.display = "block";
+
+		// ランダムな質問を表示
+		const question = getRandomQuestion();
+		bubble.textContent = question;
+		inputArea.style.display = "flex";
+
+		// 入力欄にフォーカス
+		setTimeout(() => userInput.focus(), 300);
+	}
+
+	// イルカを非表示にする
+	function hideDolphin() {
+		dolphinState.isVisible = false;
+		wrap.style.display = "none";
+		inputArea.style.display = "none";
+		userInput.value = "";
+
+		// 次回出現をスケジュール
+		scheduleNextAppearance();
+	}
+
+	// 時刻チェックしてイルカを表示
+	function checkAndShowDolphin() {
+		if (!dolphinState.nextAppearTime) return;
+
+		const now = new Date();
+		if (now >= dolphinState.nextAppearTime && !dolphinState.isVisible) {
+			showDolphin();
 		}
+	}
 
-		if(response && response.answer){
-			bubble.textContent = response.answer;
-		} else {
-			bubble.textContent = "エラーが起こったよ...";
+	// ユーザーの入力に応答
+	function respondToUser() {
+		const input = userInput.value.trim();
+		if (!input) return;
+
+		// ユーザーの入力を会話履歴に追加
+		dolphinState.conversationHistory.push({
+			type: 'user',
+			text: input,
+			time: new Date()
+		});
+
+		// イルカの応答を取得
+		const response = getDolphinResponse(input);
+
+		// イルカの応答を会話履歴に追加
+		dolphinState.conversationHistory.push({
+			type: 'dolphin',
+			text: response,
+			time: new Date()
+		});
+
+		// 応答を表示
+		bubble.textContent = response;
+		userInput.value = "";
+
+		// 3秒後に自動で非表示
+		setTimeout(() => {
+			hideDolphin();
+		}, 3000);
+	}
+
+	// イベントリスナー設定
+	closeBtn.addEventListener("click", () => {
+		hideDolphin();
+	});
+
+	sendBtn.addEventListener("click", () => {
+		respondToUser();
+	});
+
+	userInput.addEventListener("keypress", (e) => {
+		if (e.key === "Enter") {
+			respondToUser();
 		}
 	});
-});
+
+	// イルカ画像クリックで会話履歴を表示
+	sprite.addEventListener("click", () => {
+		if (dolphinState.conversationHistory.length > 0) {
+			const lastConv = dolphinState.conversationHistory[dolphinState.conversationHistory.length - 1];
+			bubble.textContent = lastConv.text;
+		}
+	});
+
+	// 定期的に時刻をチェック (30秒ごと)
+	setInterval(checkAndShowDolphin, 30000);
+
+	// 初回チェック
+	checkAndShowDolphin();
 })();
